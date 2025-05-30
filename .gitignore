@@ -1,0 +1,22 @@
+# Node.js
+node_modules/
+npm-debug.log*
+
+# TypeScript compilation output
+dist/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Editor/IDE specific (optional, but good)
+.vscode/
+.idea/
+*.swp
+*~
+
+# Environment variables (if you ever use .env for local testing of the package)
+.env
+.env.*
+!.env.example

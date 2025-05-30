@@ -1,0 +1,35 @@
+{
+    "compilerOptions": {
+        /* Base Options: */
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "target": "ES2020",
+        "allowJs": false,
+        "resolveJsonModule": true,
+        "moduleDetection": "force",
+        "isolatedModules": true,
+        /* Strictness */
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        /* Modules */
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        /* Output Structure */
+        "outDir": "./dist",
+        "rootDir": "./src",
+        /* Declaration Files */
+        "declaration": true,
+        "declarationMap": true,
+        /* Source Maps for JS */
+        "sourceMap": true,
+        /* JSX */
+        "jsx": "react-jsx"
+    },
+    "include": [
+        "src"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}
