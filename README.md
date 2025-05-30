@@ -1,6 +1,6 @@
 # @mgcmnd/auth-client
 
-A React context provider and hooks for client-side authentication with the Magic Monad authentication server (`auth.mgcmnd.net`).
+A React context provider and hooks for client-side authentication with the [Magic Monad](https://magicmonad.com) authentication server (`auth.mgcmnd.net`).
 
 ## Features
 
@@ -13,8 +13,6 @@ A React context provider and hooks for client-side authentication with the Magic
 
 ```bash
 npm install @mgcmnd/auth-client
-# or
-yarn add @mgcmnd/auth-client
 ```
 
 You will also need `react` (version 17.0.0 or ^18.0.0) as a peer dependency.
@@ -29,23 +27,15 @@ import React from 'react';
 import { AuthProvider, AuthProviderConfig } from '@mgcmnd/auth-client';
 import { BrowserRouter as Router, Routes, Route /* ... other router components */ } from 'react-router-dom';
 // Import your actual application components
-// For example:
-// import LoginPage from './pages/LoginPage';
-// import ProfilePage from './pages/ProfilePage';
-// import AuthCallback from './pages/AuthCallback'; // Important: Component for handling redirect
-// import HomePage from './pages/HomePage';
 
 // 1. Define your AuthProvider configuration
 const authConfig: AuthProviderConfig = {
-  authServerUrl: 'https://auth.mgcmnd.net', // REQUIRED: URL of your auth server
   defaultAppRedirectPath: '/auth/callback',   // Path in your SPA where the auth server redirects back
-                                             // e.g., http://localhost:5173/auth/callback
   // Optional configurations:
   // tokenStorageKey: 'my_custom_token_key',
   // stateStorageKey: 'my_custom_state_key',
   onLoginSuccess: (user, token) => {
     console.log('Login successful in SPA!', user);
-    // Perform additional actions like redirecting or fetching app-specific data
   },
   onLogoutSuccess: () => {
     console.log('Logout successful in SPA!');
@@ -56,21 +46,10 @@ function App() {
   return (
     <AuthProvider config={authConfig}>
       <Router>
-        {/* Example Navigation (optional) */}
-        <nav>
-          {/* Links to your pages */}
-        </nav>
-
         <Routes>
-          {/* 
-            You'll need a route for your `defaultAppRedirectPath` 
-            (e.g., /auth/callback) where you call `handleAuthCallback`.
-          */}
-          {/* <Route path="/" element={<HomePage />} /> */}
-          {/* <Route path="/login" element={<LoginPage />} /> */}
-          {/* <Route path="/auth/callback" element={<AuthCallback />} /> */}
-          {/* <Route path="/profile" element={<ProfilePage />} /> */}
-          {/* Add other routes for your application */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          {/* Other routes for your application */}
         </Routes>
       </Router>
     </AuthProvider>
@@ -105,7 +84,7 @@ function UserProfile() {
     return (
       <div>
         <p>You are not logged in.</p>
-        <Link to="/login">Login</Link> {/* Adjust link to your login page route */}
+        <Link to="/login">Login</Link>
       </div>
     );
   }
@@ -114,10 +93,10 @@ function UserProfile() {
     <div>
       <h1>Welcome, {user.name || user.email}!</h1>
       {user.email && <p>Email: {user.email}</p>}
-      {user.picture && <img src={user.picture} alt={user.name || 'User avatar'} style={{ borderRadius: '50%', width: '50px', height: '50px' }} />}
+      {user.picture && <img src={user.picture} alt={user.name || 'User avatar'} />}
       <h3>User Details (from JWT):</h3>
       <pre>{JSON.stringify(user, null, 2)}</pre>
-      <button onClick={() => logout('/')}>Logout</button> {/* Redirect to home on logout */}
+      <button onClick={() => logout('/')}>Logout</button>
     </div>
   );
 }
@@ -133,7 +112,7 @@ You need to create a component that will be rendered at the `defaultAppRedirectP
 // src/pages/AuthCallback.tsx (Example Page Component)
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '@mgcmnd/auth-client';
-import { useNavigate } from 'react-router-dom'; // Or your preferred router's navigation hook
+import { useNavigate } from 'react-router-dom';
 
 function AuthCallback() {
   const { handleAuthCallback, isLoading, isAuthenticated, error } = useAuth();
@@ -193,13 +172,9 @@ And ensure this component is used in your App's router setup:
 
 ```tsx
 // src/App.tsx (example router part)
-// ...
 <Routes>
   <Route path="/auth/callback" element={<AuthCallback />} />
-  {/* <Route path="/profile" element={<ProfilePage />} /> */}
-  {/* ... other routes ... */}
 </Routes>
-// ...
 ```
 
 ## API
