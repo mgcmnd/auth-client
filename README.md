@@ -34,6 +34,7 @@ import AuthCallbackPage from './pages/AuthCallbackPage'; // Page to host AuthCal
 const authConfig: AuthProviderConfig = {
   defaultAppRedirectPath: '/auth/callback',
   // Optional configurations:
+  // authServerUrl: 'https://your-custom-auth-server.com', // Defaults to 'https://auth.mgcmnd.net'
   // tokenStorageKey: 'my_custom_token_key',
   // stateStorageKey: 'my_custom_state_key',
   onLoginSuccess: (user, token) => {
@@ -146,7 +147,7 @@ The main provider component that wraps your application or a part of it.
 **Props:**
 
 *   `config` (`AuthProviderConfig`): **Required**. An object to configure the provider.
-    *   `authServerUrl` (string): *. The base URL of your Magic Monad authentication server (e.g., `https://auth.mgcmnd.net`).
+    *   `authServerUrl?` (string): **Optional**. The base URL of your Magic Monad authentication server. Defaults to `'https://auth.mgcmnd.net'`.
     *   `defaultAppRedirectPath?` (string): The path within your SPA where the auth server should redirect the user after a login attempt. Defaults to `'/auth/callback'`. The full URL (e.g., `http://localhost:3000/auth/callback`) must be registered as an allowed redirect URI on your OAuth applications (Google, GitHub) via your auth server.
     *   `tokenStorageKey?` (string): The key used for storing the JWT in `localStorage`. Defaults to `'mgcmnd_auth_token'`.
     *   `stateStorageKey?` (string): The key used for storing the OAuth state string in `sessionStorage` for CSRF protection. Defaults to `'mgcmnd_oauth_app_state'`.
