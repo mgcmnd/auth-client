@@ -1,18 +1,14 @@
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
-import type { ReactNode } from 'react';
-import { useAuthCoreState, type CoreStateConfig } from './useAuthCoreState';
-import { useAuthActions, type ActionsConfig, type UseAuthActionsReturn } from './useAuthActions';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 
-// Define the shape of your user object
 export interface AuthUser {
     id: string;
     email?: string;
     name?: string;
     picture?: string;
-    [key: string]: any; // For additional claims from JWT
+    [key: string]: any;
 }
 
-// Define the context state
 export interface AuthState {
     isAuthenticated: boolean;
     user: AuthUser | null;
@@ -21,83 +17,211 @@ export interface AuthState {
     token: string | null;
 }
 
-// Define the context value (state + actions)
-// It combines AuthState and the return type of useAuthActions, plus logout and getAccessToken
-export interface AuthContextType extends AuthState, UseAuthActionsReturn {
-    logout: (logoutRedirectUri?: string) => void;
-    getAccessToken: () => string | null;
+export interface AuthConfig {
+    authServerUrl?: string;
+    tokenStorageKey?: string;
+    redirectPath?: string;
+    onLoginSuccess?: (user: AuthUser, token: string) => void;
+    onLogoutSuccess?: () => void;
 }
+
+interface AuthContextType extends AuthState {
+    loginWithGoogle: (redirectPath?: string) => void;
+    loginWithGitHub: (redirectPath?: string) => void;
+    loginWithEmail: (email: string, redirectPath?: string) => Promise<void>;
+    logout: (redirectUrl?: string) => void;
+    handleCallback: () => void;
+}
+
+const DEFAULT_CONFIG: Required<AuthConfig> = {
+    authServerUrl: 'https://auth.mgcmnd.net',
+    tokenStorageKey: 'mgcmnd_auth_token',
+    redirectPath: '/auth/callback',
+    onLoginSuccess: () => { },
+    onLogoutSuccess: () => { },
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Configuration for the AuthProvider
-export interface AuthProviderConfig extends CoreStateConfig, ActionsConfig {
-    // All properties are now optional at this top level,
-    // as defaults are handled in hooks or defaultConfigValues
-}
-
-// Default values for config properties not having defaults in individual hooks
-// or for properties that might be shared if not for destructuring in hooks.
-// However, individual hooks now handle their own defaults for tokenStorageKey etc.
-const defaultConfigValues: Partial<AuthProviderConfig> = {
-    defaultAppRedirectPath: '/auth/callback',
-    tokenStorageKey: 'mgcmnd_auth_token',
-    stateStorageKey: 'mgcmnd_oauth_app_state',
-};
-
-
-export const AuthProvider: React.FC<{ children: ReactNode; config: AuthProviderConfig }> = ({
+export const AuthProvider: React.FC<{ children: React.ReactNode; config?: AuthConfig }> = ({
     children,
-    config: rawConfig,
+    config = {},
 }) => {
-    // Memoize the merged config object to ensure its stability if rawConfig is stable
-    const config = useMemo(() => ({
-        ...defaultConfigValues,
-        ...rawConfig,
-    }), [rawConfig]);
+    const cfg = { ...DEFAULT_CONFIG, ...config };
 
-    // Core state logic (manages authState, token persistence)
-    const { authState, saveTokenAndUser, clearTokenAndUser, setAuthState } = useAuthCoreState(config);
-
-    // Auth actions logic (manages login flows, callback handling)
-    const actions = useAuthActions({
-        config, // Pass the memoized config
-        saveTokenAndUser, // Pass the memoized function from useAuthCoreState
-        setAuthState,     // Pass setAuthState for actions to update loading/error states
+    const [state, setState] = useState<AuthState>({
+        isAuthenticated: false,
+        user: null,
+        isLoading: false,
+        error: null,
+        token: null,
     });
 
-    // Logout action
-    const logout = useCallback((logoutRedirectUri?: string) => {
-        clearTokenAndUser(); // Uses memoized clearTokenAndUser
-        const targetRedirect = logoutRedirectUri || window.location.origin + '/'; // Sensible default
-        window.location.href = targetRedirect;
-    }, [clearTokenAndUser]);
+    const generateState = () => {
+        const array = new Uint8Array(32);
+        window.crypto.getRandomValues(array);
+        return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+    };
 
-    // Access token getter
-    const getAccessToken = useCallback((): string | null => {
-        return authState.token;
-    }, [authState.token]); // Depends on the token part of authState
+    const getRedirectUri = (path?: string) => {
+        const basePath = path || cfg.redirectPath;
+        return `${window.location.origin}${basePath}`;
+    };
 
+    const decodeAndSetToken = (token: string, skipCallback = false) => {
+        try {
+            // Prevent processing the same token multiple times
+            if (state.token === token && state.isAuthenticated) {
+                return;
+            }
 
-    // Memoize the final context value
-    const contextValue = useMemo(() => ({
-        ...authState,
-        ...actions, // Spread memoized actions (loginWith..., handleAuthCallback)
-        logout,         // Add memoized logout
-        getAccessToken, // Add memoized getAccessToken
-    }), [authState, actions, logout, getAccessToken]);
+            const decoded = jwtDecode<any>(token);
+            const user: AuthUser = {
+                id: decoded.sub || decoded.id,
+                email: decoded.email,
+                name: decoded.name,
+                picture: decoded.picture,
+                ...decoded,
+            };
 
-    return (
-        <AuthContext.Provider value={contextValue}>
-            {children}
-        </AuthContext.Provider>
-    );
+            localStorage.setItem(cfg.tokenStorageKey, token);
+            setState({
+                isAuthenticated: true,
+                user,
+                isLoading: false,
+                error: null,
+                token,
+            });
+
+            // Only call onLoginSuccess when explicitly logging in (not on mount)
+            if (!skipCallback) {
+                cfg.onLoginSuccess(user, token);
+            }
+        } catch (error) {
+            setState(prev => ({
+                ...prev,
+                isLoading: false,
+                error: 'Invalid token format',
+            }));
+        }
+    };
+
+    // Load token on mount
+    useEffect(() => {
+        const token = localStorage.getItem(cfg.tokenStorageKey);
+        if (token) {
+            // Skip callback on initial load to prevent duplicate calls
+            decodeAndSetToken(token, true);
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Auth methods
+    const loginWithProvider = (provider: 'google' | 'github', redirectPath?: string) => {
+        const state = generateState();
+        sessionStorage.setItem('oauth_state', state);
+
+        const params = new URLSearchParams({
+            redirect_uri: getRedirectUri(redirectPath),
+            state,
+        });
+
+        window.location.href = `${cfg.authServerUrl}/${provider}/login?${params}`;
+    };
+
+    const loginWithGoogle = (redirectPath?: string) => loginWithProvider('google', redirectPath);
+    const loginWithGitHub = (redirectPath?: string) => loginWithProvider('github', redirectPath);
+
+    const loginWithEmail = async (email: string, redirectPath?: string) => {
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
+
+        try {
+            const state = generateState();
+            sessionStorage.setItem('oauth_state', state);
+
+            const response = await fetch(`${cfg.authServerUrl}/email/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email,
+                    redirect_uri: getRedirectUri(redirectPath),
+                    state,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to request email login');
+            }
+
+            setState(prev => ({ ...prev, isLoading: false }));
+        } catch (error) {
+            setState(prev => ({
+                ...prev,
+                isLoading: false,
+                error: error instanceof Error ? error.message : 'Email login failed',
+            }));
+            throw error;
+        }
+    };
+
+    const logout = (redirectUrl?: string) => {
+        localStorage.removeItem(cfg.tokenStorageKey);
+        setState({
+            isAuthenticated: false,
+            user: null,
+            isLoading: false,
+            error: null,
+            token: null,
+        });
+        cfg.onLogoutSuccess();
+
+        if (redirectUrl) {
+            window.location.href = redirectUrl;
+        }
+    };
+
+    const handleCallback = () => {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const stateParam = params.get('state');
+        const error = params.get('error');
+        const storedState = sessionStorage.getItem('oauth_state');
+
+        // Clean up
+        sessionStorage.removeItem('oauth_state');
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+        if (error) {
+            setState(prev => ({ ...prev, error }));
+            return;
+        }
+
+        if (stateParam !== storedState) {
+            setState(prev => ({ ...prev, error: 'Invalid state parameter' }));
+            return;
+        }
+
+        if (token) {
+            decodeAndSetToken(token, false); // Explicitly call callback for new login
+        } else {
+            setState(prev => ({ ...prev, error: 'No token received' }));
+        }
+    };
+
+    const value: AuthContextType = {
+        ...state,
+        loginWithGoogle,
+        loginWithGitHub,
+        loginWithEmail,
+        logout,
+        handleCallback,
+    };
+
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook to use the AuthContext
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
+    if (!context) {
         throw new Error('useAuth must be used within an AuthProvider');
     }
     return context;
