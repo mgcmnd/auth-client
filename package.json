@@ -1,6 +1,6 @@
 {
     "name": "@mgcmnd/auth-client",
-    "version": "0.9.2",
+    "version": "0.9.3",
     "description": "Client-side authentication provider for mgcmnd.net services.",
     "type": "module",
     "main": "./dist/index.js",
