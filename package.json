@@ -1,6 +1,6 @@
 {
     "name": "@mgcmnd/auth-client",
-    "version": "0.9.5",
+    "version": "0.9.6",
     "description": "Client-side authentication provider for mgcmnd.net services.",
     "type": "module",
     "main": "./dist/index.cjs",
@@ -25,13 +25,11 @@
         "build:tsc": "tsc -p tsconfig.json",
         "prepublishOnly": "npm run build"
     },
-    "peerDependencies": {
-        "react": "^19.0.0",
-        "react-dom": "^19.0.0"
-    },
     "devDependencies": {
-        "@types/react": "^19.0.0",
+        "@types/react": "^19.0.10",
+        "@types/react-dom": "^19.0.4",
         "react": "^19.0.0",
+        "react-dom": "^19.0.0",
         "tsup": "^8.5.0",
         "typescript": "^5.0.0"
     },
