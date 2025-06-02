@@ -1,23 +1,25 @@
 {
     "name": "@mgcmnd/auth-client",
-    "version": "0.9.4",
+    "version": "0.9.5",
     "description": "Client-side authentication provider for mgcmnd.net services.",
     "type": "module",
-    "main": "./dist/index.js",
-    "module": "./dist/index.mjs",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "import": "./dist/index.mjs",
-            "require": "./dist/index.js"
-        }
+            "import": "./dist/index.js",
+            "require": "./dist/index.cjs"
+        },
+        "./package.json": "./package.json"
     },
     "files": [
         "dist",
         "LICENSE",
         "README.md"
     ],
+    "sideEffects": false,
     "scripts": {
         "build": "tsup",
         "build:tsc": "tsc -p tsconfig.json",
@@ -37,7 +39,7 @@
         "react",
         "authentication",
         "auth-provider",
-        "magic-monad"
+        "mgcmnd"
     ],
     "author": "Yuval Adam <yuval@magicmonad.com>",
     "license": "GPL-3.0",
